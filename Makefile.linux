@@ -1,0 +1,24 @@
+#for Linux compiling
+CXX		= g++
+
+EXTINCL		= /home/micro/new/ogl-master/external/
+CFLAGS1		= -std=c++11 -s -O3 -posix -DGLEW_STATIC -DTW_NO_DIRECT3D -DTW_NO_LIB_PRAGMA -DTW_STATIC -D_CRT_SECURE_NO_WARNINGS -I$(EXTINCL)glfw-3.1.2/include/GLFW -I$(EXTINCL)glm-0.9.7.1 -I$(EXTINCL)glew-1.13.0/include
+CFILE		= triangle
+
+EXTLIB		= /home/micro/new/ogl-master/build/external/
+CCOPTIONS	= $(CFLAGS1)
+LDINIOPTS	= -O3 -s -posix -rdynamic
+LDOPTIONS	= $(LDINIOPTS)
+
+EXTRA_LIBRARIES	= -lstdc++ -lGLU -lGL -lSM -lICE -lX11 -lXext $(EXTLIB)glfw-3.1.2/src/libglfw3.a $(EXTLIB)libGLEW_1130.a -lGLU -lGL -lGLU -lXrandr -lXext -lX11 -lrt -ldl -lrt -lm -lpthread -lXrandr -lXinerama -lXi -lXxf86vm -lXcursor -ldl -lrt -lm -lpthread -lXrandr -lXinerama -lXi -lXxf86vm -lXcursor -lGL -lSM -lICE -lX11 -lXext
+
+all: $(CFILE)
+
+$(CFILE): $(CFILE).o
+	$(CXX) -o $@ $(LDOPTIONS) $< $(EXTRA_LIBRARIES)
+
+$(CFILE).o: $(CFILE).cpp
+	$(CXX) $(CFLAGS1) -c -o $@ $<
+
+clean::
+	rm -f *.o triangle
