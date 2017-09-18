@@ -30,15 +30,18 @@ GLfloat g_vertex_buffer_data[] = {
 	 0.0f,  1.0f, 0.0f,
 };
 
+GLfloat g_vertex_buffer_data2[] = { 
+	-.5f, -.5f, 0.0f,
+	 1.0f, -.5f, 0.0f,
+	 0.0f,  .5f, 0.0f,
+};
+
 struct Triangle {
 	GLfloat *vertices;
 	GLuint vertexbuffer;
         GLuint MatrixID;
-        unsigned IDA;
-        static unsigned IDAC;
 	float angle = .0f, scale = .5f, speed = .01f, dx = .0f, dy = .0f, x_velocity = 0.02f, y_velocity = 0.01f;
         Triangle(GLfloat *p, GLuint programID ): vertices(p) {
-                IDA = IDAC++;
 		glGenBuffers(1, &vertexbuffer);
 		glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
 		glBufferData(GL_ARRAY_BUFFER, 9*sizeof(GLfloat), vertices, GL_STATIC_DRAW);
@@ -50,8 +53,6 @@ struct Triangle {
         void turn(void);
 };
 
-unsigned Triangle::IDAC = 0;
-
 void Triangle::turn(void) {
 	glm::mat4 Model = glm::scale(glm::mat4(1.0f), glm::vec3(scale)); //Scale
 	Model = Model * glm::translate(glm::mat4(), glm::vec3(dx, dy, 0.0f)); //Translate
@@ -61,10 +62,10 @@ void Triangle::turn(void) {
 	glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &Model[0][0]);
 
 	// 1rst attribute buffer : vertices
-	glEnableVertexAttribArray(IDA);
+	glEnableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
 	glVertexAttribPointer(
-		IDA,                // attribute. It must match the layout in the shader.
+		0,                // attribute. It must match the layout in the shader.
 		3,                  // size
 		GL_FLOAT,           // type
 		GL_FALSE,           // normalized?
@@ -75,7 +76,7 @@ void Triangle::turn(void) {
 	// Draw the triangle !
 	glDrawArrays(GL_TRIANGLES, 0, 3); // 3 indices starting at 0 -> 1 triangle
 
-	glDisableVertexAttribArray(IDA);
+	glDisableVertexAttribArray(0);
 
         //IO is in wrong place here but for the only one object it is ok
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) if (scale < .99) scale += 0.01f;
@@ -236,6 +237,8 @@ int main(void) {
 	GLuint programID = SetUpShaders(); // Create and compile our GLSL program from the shaders
 
         Triangle triangle(g_vertex_buffer_data, programID);
+Triangle triangle2(g_vertex_buffer_data2, programID);
+Triangle triangle3(g_vertex_buffer_data2, programID);
 	
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
 	glfwSetWindowSizeCallback(window, window_size_callback);
@@ -245,6 +248,8 @@ int main(void) {
 		glUseProgram(programID);		// Use our shader
 
                 triangle.turn();
+triangle2.turn();
+triangle3.turn();
 
 		glfwSwapBuffers(window);	// Swap buffers
 		glfwPollEvents();
