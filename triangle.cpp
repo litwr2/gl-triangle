@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
+#include <queue>
 #include <string>
 
 // Include GLEW
@@ -36,22 +37,39 @@ GLfloat g_vertex_buffer_data2[] = {
 	 0.0f,  .5f, 0.0f,
 };
 
+std::queue<void*> trlist;
+
+void EventDispatcher() {
+	state.mouse_button = 0;
+}
+
 struct Triangle {
 	GLfloat *vertices;
 	GLuint vertexbuffer;
         GLuint MatrixID;
+	int focus, id;
+	static int OC;
 	float angle = .0f, scale = .5f, speed = .01f, dx = .0f, dy = .0f, x_velocity = 0.02f, y_velocity = 0.01f;
         Triangle(GLfloat *p, GLuint programID ): vertices(p) {
 		glGenBuffers(1, &vertexbuffer);
 		glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
 		glBufferData(GL_ARRAY_BUFFER, 9*sizeof(GLfloat), vertices, GL_STATIC_DRAW);
+		focus = ((id = OC++) == 0);
 		MatrixID = glGetUniformLocation(programID, "MVP"); // Get a handle for our "MVP" uniform
+		trlist.push(this);
 	}
 	~Triangle() {
 		glDeleteBuffers(1, &vertexbuffer);	// Cleanup VBO and shader
         }
+	void RotationLeft(void) {if (speed < .7) speed += 0.01f;}
+	void RotationRight(void) {if (scale > 0.02) scale -= 0.01f;}
+	void ZoomIn(void) {if (scale < .99) scale += 0.01f;}
+	void ZoomOut(void) {if (scale > 0.02) scale -= 0.01f;}
+	int CheckFocus(double, double);
         void turn(void);
 };
+
+int Triangle::OC = 0;
 
 void Triangle::turn(void) {
 	glm::mat4 Model = glm::scale(glm::mat4(1.0f), glm::vec3(scale)); //Scale
@@ -78,17 +96,11 @@ void Triangle::turn(void) {
 
 	glDisableVertexAttribArray(0);
 
-        //IO is in wrong place here but for the only one object it is ok
-	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) if (scale < .99) scale += 0.01f;
-	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) if (scale > 0.02) scale -= 0.01f;
-	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) if (speed < .7) speed += 0.01f;  //changes rotation speed
-	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) if (speed >= -.7) speed -= 0.01f;
+	glm::vec4 r1 = Model * vec4(make_vec3(vertices), 1.0f);
+	glm::vec4 r2 = Model * vec4(make_vec3(vertices + 3), 1.0f);
+	glm::vec4 r3 = Model * vec4(make_vec3(vertices + 6), 1.0f);
 
-	angle += speed;
-
-	glm::vec4 r1 = Model * vec4(make_vec3(g_vertex_buffer_data), 1.0f);
-	glm::vec4 r2 = Model * vec4(make_vec3(g_vertex_buffer_data + 3), 1.0f);
-	glm::vec4 r3 = Model * vec4(make_vec3(g_vertex_buffer_data + 6), 1.0f);
+        angle += speed;
 
 	float x1 = (r1[0] + 1)/2*state.win_width, y1 = (1 - r1[1])/2*state.win_height,
 		x2 = (r2[0] + 1)/2*state.win_width, y2 = (1 - r2[1])/2*state.win_height,
@@ -113,11 +125,14 @@ void Triangle::turn(void) {
 		glfwGetCursorPos(window, &mx, &my);
 		a = ((mx - x1)*(y3 - y1) - (my - y1)*(x3 - x1))/((x2 - x1)*(y3 - y1) - (y2 - y1)*(x3 - x1));
 		b = ((mx - x1)*(y2 - y1) - (my - y1)*(x2 - x1))/((x3 - x1)*(y2 - y1) - (y3 - y1)*(x2 - x1));
-		if (a >= 0 && b >= 0 && a + b >=0 && a + b <= 1)
-			printf("a bullseye!\n");
-		else
+		if (a >= 0 && b >= 0 && a + b >=0 && a + b <= 1) {
+			printf("An object #%d is hit!\n", id);
+			focus = 1;
+		}
+		else {
 			printf("a miss\n");
-		state.mouse_button = 0;
+			focus = 0;
+		}
 	}
 }
 
@@ -237,8 +252,8 @@ int main(void) {
 	GLuint programID = SetUpShaders(); // Create and compile our GLSL program from the shaders
 
         Triangle triangle(g_vertex_buffer_data, programID);
-Triangle triangle2(g_vertex_buffer_data2, programID);
-Triangle triangle3(g_vertex_buffer_data2, programID);
+	Triangle triangle2(g_vertex_buffer_data2, programID);
+	Triangle triangle3(g_vertex_buffer_data2, programID);
 	
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
 	glfwSetWindowSizeCallback(window, window_size_callback);
@@ -247,9 +262,18 @@ Triangle triangle3(g_vertex_buffer_data2, programID);
 		glClear(GL_COLOR_BUFFER_BIT);		// Clear the screen
 		glUseProgram(programID);		// Use our shader
 
-                triangle.turn();
-triangle2.turn();
-triangle3.turn();
+		for (int i = 0; i < trlist.size(); i++) {
+			Triangle *p = (Triangle*) trlist.front();
+			trlist.pop();
+			trlist.push(p);
+	                p->turn();
+			if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS && p->focus) p->ZoomIn();
+			if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS && p->focus) p->ZoomOut();
+			if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS && p->focus) p->RotationLeft();  //changes rotation speed
+			if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS && p->focus) p->RotationRight();
+		}
+
+		EventDispatcher();
 
 		glfwSwapBuffers(window);	// Swap buffers
 		glfwPollEvents();
