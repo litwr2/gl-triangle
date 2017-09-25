@@ -62,7 +62,7 @@ struct Triangle {
 		glDeleteBuffers(1, &vertexbuffer);	// Cleanup VBO and shader
         }
 	void RotationLeft(void) {if (speed < .7) speed += 0.01f;}
-	void RotationRight(void) {if (scale > 0.02) scale -= 0.01f;}
+	void RotationRight(void) {if (scale > 0.02) speed -= 0.01f;}
 	void ZoomIn(void) {if (scale < .99) scale += 0.01f;}
 	void ZoomOut(void) {if (scale > 0.02) scale -= 0.01f;}
 	int CheckFocus(double, double);
